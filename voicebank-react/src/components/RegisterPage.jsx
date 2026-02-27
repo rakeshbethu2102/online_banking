@@ -3,7 +3,10 @@ import VoiceAuth from '../utils/VoiceAuth';
 import { authService } from '../services/api';
 import './AuthStyles.css';
 
+import { useNavigate } from 'react-router-dom';
+
 const RegisterPage = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -168,6 +171,11 @@ const RegisterPage = () => {
         voiceAuthRef.current.speak('Registration successful! You can now log in.');
         setAuthStatus('');
         
+        // After a short pause, navigate to the login page
+        setTimeout(() => {
+          navigate('/login');
+        }, 1500);
+
         // Reset form after successful registration
         setTimeout(() => {
           setFormData({

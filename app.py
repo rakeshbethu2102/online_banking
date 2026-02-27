@@ -4,7 +4,7 @@ import speech_recognition as sr
 import pyttsx3
 import json
 import re
-import datetime
+from datetime import datetime
 import secrets
 import hashlib
 
@@ -139,9 +139,12 @@ def process_help():
     response = "I can help you with the following: Check account balance, Transfer funds information, Loan details, Transaction history. Please tell me what you want to do."
     return response
 
+from flask import Flask, render_template, request, jsonify, session, redirect
+...
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # Redirect to the React frontend login page by default
+    return redirect('http://localhost:3001/login')
 
 @app.route('/process_speech', methods=['POST'])
 def process_speech():
@@ -285,6 +288,47 @@ def protected_test():
     
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
+
+# Additional API endpoints for different pages
+
+def authenticate_request():
+    token = request.headers.get('Authorization', '').replace('Bearer ', '')
+    if token in logged_in_users:
+        return logged_in_users[token]
+    return None
+
+@app.route('/api/dashboard', methods=['GET'])
+def dashboard():
+    user = authenticate_request()
+    if not user:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    # return some dashboard data; here just echoing existing banking_data
+    return jsonify({'success': True, 'data': banking_data})
+
+@app.route('/api/account', methods=['GET'])
+def account_info():
+    user = authenticate_request()
+    if not user:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    info = {
+        'balance': banking_data['account_balance'],
+        'number': banking_data['account_number']
+    }
+    return jsonify({'success': True, 'account': info})
+
+@app.route('/api/transactions', methods=['GET'])
+def transactions():
+    user = authenticate_request()
+    if not user:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    return jsonify({'success': True, 'transactions': banking_data['recent_transactions']})
+
+@app.route('/api/loans', methods=['GET'])
+def loans():
+    user = authenticate_request()
+    if not user:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    return jsonify({'success': True, 'loans': banking_data['loan_info']})
 
 
 if __name__ == '__main__':

@@ -9,14 +9,13 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
 
-  // Check if user is authenticated on app load
+  // Force fresh login by clearing stale auth data on app startup
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const user = localStorage.getItem('currentUser');
-    if (token && user) {
-      setIsAuthenticated(true);
-      setCurrentUser(JSON.parse(user));
-    }
+    // Clear localStorage to ensure users must login fresh
+    localStorage.removeItem('token');
+    localStorage.removeItem('currentUser');
+    setIsAuthenticated(false);
+    setCurrentUser(null);
   }, []);
 
   const login = (userData) => {

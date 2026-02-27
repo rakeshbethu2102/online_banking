@@ -12,6 +12,10 @@ The React authentication system has been successfully integrated with the Flask 
   - `/api/login` - User authentication
   - `/api/logout` - Session termination
   - `/api/protected/test` - Protected route testing
+  - `/api/dashboard` - Dashboard data (auth required)
+  - `/api/account` - Account information (auth required)
+  - `/api/transactions` - Transaction list (auth required)
+  - `/api/loans` - Loan details (auth required)
 - Enhanced security with password hashing
 - Added user session management
 

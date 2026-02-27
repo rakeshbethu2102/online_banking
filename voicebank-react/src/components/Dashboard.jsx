@@ -6,7 +6,10 @@ import './AuthStyles.css';
 
 const Dashboard = ({ user, logout }) => {
   const navigate = useNavigate();
-  const displayName = user ? (user.firstName || user.username) : 'User';
+  // Handle user prop properly - user might be an object with firstName/username or just a string
+  const displayName = (user && typeof user === 'object') 
+    ? (user.firstName || user.username || 'User') 
+    : (user || 'User');
   const [voiceCommand, setVoiceCommand] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [commandHistory, setCommandHistory] = useState([]);
@@ -56,7 +59,7 @@ const Dashboard = ({ user, logout }) => {
     
     // Welcome message
     if (voiceAuthRef.current) {
-      voiceAuthRef.current.speak(`Welcome to voiceBank, ${user}! How can I assist you today?`);
+      voiceAuthRef.current.speak(`Welcome to voiceBank, ${displayName}! How can I assist you today?`);
     }
     
     // Cleanup on unmount
@@ -65,7 +68,7 @@ const Dashboard = ({ user, logout }) => {
         voiceAuthRef.current.abort();
       }
     };
-  }, [user]);
+  }, [displayName]);
 
   const processVoiceCommand = async (command) => {
     const lowerCmd = command.toLowerCase();
@@ -147,11 +150,29 @@ const Dashboard = ({ user, logout }) => {
     }
   };
 
+  // helper for redirecting to Flask index.html page
+  const goToFlaskIndex = () => {
+    // open in same window
+    window.location.href = 'http://localhost:5000/';
+  };
+
+  // optional: automatically redirect to the Flask index.html
+  // uncomment below if you want auto-redirect:
+  // useEffect(() => {
+  //   const timer = setTimeout(goToFlaskIndex, 2000);
+  //   return () => clearTimeout(timer);
+  // }, []);
+
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
-        <h1>Welcome to voiceBank, {user}!</h1>
-        <button onClick={handleLogout} className="logout-btn">Logout</button>
+        <h1>Welcome to voiceBank, {displayName}!</h1>
+        <div>
+          <button onClick={goToFlaskIndex} className="auth-btn" style={{marginRight:'10px'}}>
+            Open VoiceBank
+          </button>
+          <button onClick={handleLogout} className="logout-btn">Logout</button>
+        </div>
       </div>
       
       <div className="dashboard-content">

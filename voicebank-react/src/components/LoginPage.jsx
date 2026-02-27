@@ -3,7 +3,10 @@ import VoiceAuth from '../utils/VoiceAuth';
 import { authService } from '../services/api';
 import './AuthStyles.css';
 
+import { useNavigate } from 'react-router-dom';
+
 const LoginPage = ({ login }) => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     username: '',
     password: ''
@@ -133,6 +136,7 @@ const LoginPage = ({ login }) => {
         login(response); // Pass the full response object
         voiceAuthRef.current.speak(`Welcome back, ${response.user.firstName || response.user.username}!`);
         setAuthStatus('Login successful!');
+        // Navigation is handled by App router when isAuthenticated becomes true
       } else {
         setError(response.message || 'Login failed');
         voiceAuthRef.current.speak(response.message || 'Login failed, please try again');

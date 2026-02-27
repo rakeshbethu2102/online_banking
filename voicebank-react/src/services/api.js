@@ -92,6 +92,14 @@ export const bankingService = {
   }
 };
 
+// Page-specific services (example APIs for different pages)
+export const pageService = {
+  getDashboardData: () => apiRequest('/dashboard', { method: 'GET' }),
+  getAccountInfo: () => apiRequest('/account', { method: 'GET' }),
+  getTransactions: () => apiRequest('/transactions', { method: 'GET' }),
+  getLoans: () => apiRequest('/loans', { method: 'GET' })
+};
+
 export default {
   authService,
   bankingService,
