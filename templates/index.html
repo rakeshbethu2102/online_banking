@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>voiceBank - Accessible Banking Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 500px;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .tagline {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+
+        .voice-button {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 20px auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .voice-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.6);
+        }
+
+        .voice-button:active {
+            transform: scale(0.95);
+        }
+
+        .voice-button.listening {
+            animation: pulse 1.5s infinite;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7); }
+            70% { box-shadow: 0 0 0 20px rgba(255, 107, 107, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0); }
+        }
+
+        .mic-icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        .status-text {
+            font-size: 1rem;
+            margin-top: 15px;
+            color: #666;
+            min-height: 24px;
+        }
+
+        .response-box {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 25px 0;
+            text-align: left;
+            min-height: 100px;
+            display: none;
+        }
+
+        .response-box.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-text {
+            background: #e3f2fd;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        .system-response {
+            background: #f3e5f5;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            line-height: 1.5;
+        }
+
+        .intent-tag {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-top: 10px;
+        }
+
+        .help-section {
+            background: #e8f5e8;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .help-title {
+            font-weight: bold;
+            color: #2e7d32;
+            margin-bottom: 10px;
+        }
+
+        .help-item {
+            margin: 8px 0;
+            padding-left: 15px;
+            color: #333;
+        }
+
+        .error-message {
+            color: #d32f2f;
+            background: #ffebee;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            display: none;
+        }
+
+        .accessibility-features {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .feature {
+            background: #fff3e0;
+            padding: 10px 15px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            margin: 5px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            .voice-button {
+                width: 120px;
+                height: 120px;
+            }
+            
+            .mic-icon {
+                font-size: 2.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🎙️ voiceBank</div>
+        <div class="tagline">Your Voice-Powered Banking Assistant</div>
+        
+        <div class="accessibility-features">
+            <div class="feature">🔊 Voice Control</div>
+            <div class="feature">♿ Accessible</div>
+            <div class="feature">💰 Financial Inclusion</div>
+        </div>
+
+        <button id="voiceButton" class="voice-button">
+            <div class="mic-icon">🎤</div>
+            <div>Tap & Speak</div>
+        </button>
+        
+        <div id="statusText" class="status-text">Ready to listen...</div>
+        
+        <div id="responseBox" class="response-box">
+            <div class="user-text">
+                <strong>You said:</strong> <span id="userSpeech"></span>
+            </div>
+            <div class="system-response">
+                <span id="systemResponse"></span>
+                <div id="intentTag" class="intent-tag"></div>
+            </div>
+        </div>
+        
+        <div id="errorMessage" class="error-message"></div>
+        
+        <div class="help-section">
+            <div class="help-title">Try saying:</div>
+            <div class="help-item">• "What is my account balance?"</div>
+            <div class="help-item">• "How much can I transfer today?"</div>
+            <div class="help-item">• "Tell me about my loans"</div>
+            <div class="help-item">• "Show my recent transactions"</div>
+            <div class="help-item">• "What can you help me with?"</div>
+        </div>
+    </div>
+
+    <script>
+        // Speech recognition setup
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        
+        // Configuration
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
+        
+        // DOM elements
+        const voiceButton = document.getElementById('voiceButton');
+        const statusText = document.getElementById('statusText');
+        const responseBox = document.getElementById('responseBox');
+        const userSpeech = document.getElementById('userSpeech');
+        const systemResponse = document.getElementById('systemResponse');
+        const intentTag = document.getElementById('intentTag');
+        const errorMessage = document.getElementById('errorMessage');
+        
+        // Intent display mapping
+        const intentDisplayNames = {
+            'balance_check': '💰 Balance Check',
+            'fund_transfer': '💸 Fund Transfer',
+            'loan_info': '🏦 Loan Information',
+            'transaction_history': '📋 Transaction History',
+            'help': '❓ Help',
+            'unknown': '🤔 Unknown'
+        };
+        
+        // Voice button click handler
+        voiceButton.addEventListener('click', startListening);
+        
+        // Start speech recognition
+        function startListening() {
+            try {
+                recognition.start();
+                updateUI('listening');
+            } catch (error) {
+                console.log('Recognition already started or error:', error);
+                recognition.stop();
+                updateUI('ready');
+            }
+        }
+        
+        // Speech recognition event handlers
+        recognition.onstart = function() {
+            console.log('Speech recognition started');
+        };
+        
+        recognition.onresult = function(event) {
+            const speechResult = event.results[0][0].transcript;
+            console.log('Speech recognized:', speechResult);
+            updateUI('processing', speechResult);
+            sendToServer(speechResult);
+        };
+        
+        recognition.onerror = function(event) {
+            console.error('Speech recognition error:', event.error);
+            let errorMsg = 'Sorry, I could not understand. ';
+            
+            switch(event.error) {
+                case 'no-speech':
+                    errorMsg += 'Please try speaking again.';
+                    break;
+                case 'audio-capture':
+                    errorMsg += 'Microphone not found. Please check your device.';
+                    break;
+                case 'not-allowed':
+                    errorMsg += 'Microphone access denied. Please allow microphone access.';
+                    break;
+                default:
+                    errorMsg += 'Please try again.';
+            }
+            
+            showError(errorMsg);
+            updateUI('error');
+        };
+        
+        recognition.onend = function() {
+            console.log('Speech recognition ended');
+            if (statusText.textContent === 'Listening...') {
+                updateUI('ready');
+            }
+        };
+        
+        // Send speech to server for processing
+        async function sendToServer(speechText) {
+            try {
+                const response = await fetch('/process_speech', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: speechText })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayResponse(speechText, data.response, data.intent);
+                    speakResponse(data.response);
+                } else {
+                    showError('Server error: ' + (data.error || 'Unknown error'));
+                    updateUI('error');
+                }
+            } catch (error) {
+                console.error('Error sending to server:', error);
+                showError('Connection error. Please check if the server is running.');
+                updateUI('error');
+            }
+        }
+        
+        // Display response in UI
+        function displayResponse(userText, systemText, intent) {
+            userSpeech.textContent = userText;
+            systemResponse.textContent = systemText;
+            intentTag.textContent = intentDisplayNames[intent] || intent;
+            responseBox.classList.add('show');
+        }
+        
+        // Text-to-speech function
+        function speakResponse(text) {
+            if ('speechSynthesis' in window) {
+                // Cancel any ongoing speech
+                speechSynthesis.cancel();
+                
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
+                
+                // Find a good voice (preferably female Indian English)
+                const voices = speechSynthesis.getVoices();
+                const indianVoice = voices.find(voice => 
+                    voice.lang.includes('en') && (voice.name.includes('India') || voice.name.includes('Google'))
+                );
+                
+                if (indianVoice) {
+                    utterance.voice = indianVoice;
+                }
+                
+                speechSynthesis.speak(utterance);
+            }
+        }
+        
+        // Update UI state
+        function updateUI(state, speechText = '') {
+            voiceButton.classList.remove('listening');
+            errorMessage.style.display = 'none';
+            responseBox.classList.remove('show');
+            
+            switch(state) {
+                case 'listening':
+                    voiceButton.classList.add('listening');
+                    statusText.textContent = 'Listening... Speak now';
+                    break;
+                case 'processing':
+                    statusText.textContent = 'Processing your request...';
+                    break;
+                case 'ready':
+                    statusText.textContent = 'Ready to listen...';
+                    break;
+                case 'error':
+                    statusText.textContent = 'Error occurred. Try again.';
+                    break;
+            }
+        }
+        
+        // Show error message
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+        
+        // Load voices for text-to-speech
+        if ('speechSynthesis' in window) {
+            // Some browsers need a user gesture to load voices
+            speechSynthesis.onvoiceschanged = function() {
+                console.log('Voices loaded');
+            };
+        }
+        
+        // Initialize
+        console.log('Voice Banking Assistant loaded');
+        console.log('Browser supports speech recognition:', !!SpeechRecognition);
+        console.log('Browser supports speech synthesis:', !!window.speechSynthesis);
+    </script>
+</body>
+</html>
