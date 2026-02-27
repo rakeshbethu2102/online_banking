@@ -11,6 +11,7 @@ const LoginPage = ({ login }) => {
     username: '',
     password: ''
   });
+  const [voiceLang, setVoiceLang] = useState('en-US');
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState('');
@@ -65,7 +66,7 @@ const LoginPage = ({ login }) => {
       setIsListening(false);
       setAuthStatus('');
       setError(`Voice recognition error: ${event.error}`);
-      voiceAuthRef.current.speak(`Sorry, I couldn't understand that. ${event.error}`);
+      speak(`Sorry, I couldn't understand that. ${event.error}`, `క్షమించండి, నేను అర్థం చేసుకోలేదు. ${event.error}`);
     });
     
     voiceAuthRef.current.setOnStart(() => {
@@ -99,7 +100,7 @@ const LoginPage = ({ login }) => {
   const handleVoiceSubmit = async (parsedData) => {
     if (!parsedData.username || !parsedData.password) {
       setError('Please provide both username and password through voice');
-      voiceAuthRef.current.speak('Please provide both username and password');
+      speak('Please provide both username and password', 'దయచేసి ఉపయోగనామం మరియు పాస్‌వర్డ్ రెండింటినీ అందించండి');
       return;
     }
     
@@ -134,16 +135,16 @@ const LoginPage = ({ login }) => {
       
       if (response.success) {
         login(response); // Pass the full response object
-        voiceAuthRef.current.speak(`Welcome back, ${response.user.firstName || response.user.username}!`);
+        speak(`Welcome back, ${response.user.firstName || response.user.username}!`, `మళ్లీ స్వాగతం, ${response.user.firstName || response.user.username}!`);
         setAuthStatus('Login successful!');
         // Navigation is handled by App router when isAuthenticated becomes true
       } else {
         setError(response.message || 'Login failed');
-        voiceAuthRef.current.speak(response.message || 'Login failed, please try again');
+        speak(response.message || 'Hmm, login didn\'t work. Give it another shot.', 'హమ్, లోగిన్ జరగలేదు. మళ్లీ ప్రయత్నించండి.');
       }
     } catch (err) {
       setError(err.message || 'An error occurred during login');
-      voiceAuthRef.current.speak('Login failed, please try again');
+      speak('Login failed, please try again', 'లోగిన్ విఫల‌మైంది, దయచేసి మళ్లీ ప్రయత్నించండి');
     } finally {
       setIsLoading(false);
     }
@@ -154,7 +155,7 @@ const LoginPage = ({ login }) => {
     
     if (!formData.username || !formData.password) {
       setError('Please enter both username and password');
-      voiceAuthRef.current.speak('Please enter both username and password');
+      speak('Please enter both username and password', 'దయచేసి ఉపయోగనామం మరియు పాస్‌వర్డ్ రెండింటిని నమోదు చేయండి');
       return;
     }
     
@@ -184,7 +185,7 @@ const LoginPage = ({ login }) => {
   const startVoiceRecognition = () => {
     if (!voiceAuthRef.current.isSupported) {
       setError('Voice recognition not supported in your browser');
-      voiceAuthRef.current.speak('Voice recognition is not supported in your browser');
+      speak('Voice recognition is not supported in your browser', 'మీ బ్రౌజర్‌లో వాయిస్ గుర్తింపు మద్దతు లేదు');
       return;
     }
     
@@ -192,19 +193,25 @@ const LoginPage = ({ login }) => {
       voiceAuthRef.current.initialize({
         continuous: false,
         interimResults: false,
-        language: 'en-US'
+        language: voiceLang // use selected language
       });
       voiceAuthRef.current.start();
     } catch (err) {
       setError(err.message);
-      voiceAuthRef.current.speak('Error initializing voice recognition');
+      speak('Error initializing voice recognition', 'వాయిస్ గుర్తింపును ప్రారంభిస్తున్నప్పుడు లో పొరతుంది');
+    }
+  };
+
+  const getReply = (en, te) => (voiceLang.startsWith('te') ? te : en);
+  const speak = (en, te = en) => {
+    if (voiceAuthRef.current) {
+      const msg = getReply(en, te);
+      voiceAuthRef.current.speak(msg, { lang: voiceLang });
     }
   };
 
   const speakInstruction = (instruction) => {
-    if (voiceAuthRef.current) {
-      voiceAuthRef.current.speak(instruction);
-    }
+    speak(instruction, instruction);
   };
 
   return (
@@ -213,19 +220,24 @@ const LoginPage = ({ login }) => {
         <div className="auth-header">
           <h1>🎙️ voiceBank Login</h1>
           <p>Welcome back! Please sign in to access your account</p>
+          <p style={{fontSize:'0.85rem',color:'#555',marginTop:'6px'}}>Note: you will be asked for your 4-digit PIN on the dashboard to view account details.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
-          {error && <div className="error-message">{error}</div>}
+          {error && (
+            <div className="alert alert-danger" role="alert" style={{marginBottom: '20px', borderRadius: '8px', padding: '14px', background: '#ffe8e8', border: '1px solid #ffcccc', color: '#d32f2f'}}>
+              <strong>⚠ Error:</strong> {error}
+            </div>
+          )}
           
-          {authStatus && (
-            <div className={`status-message ${authStatus.includes('Error') || authStatus.includes('Invalid') ? 'error' : 'info'}`}>
-              {authStatus}
+          {authStatus && !authStatus.includes('Authenticating') && (
+            <div className={`alert ${authStatus.includes('Heard') ? 'alert-info' : 'alert-success'}`} role="alert" style={{marginBottom: '20px', borderRadius: '8px', padding: '14px', background: authStatus.includes('Heard') ? '#e3f2fd' : '#d4edda', border: authStatus.includes('Heard') ? '1px solid #90caf9' : '1px solid #c3e6cb', color: authStatus.includes('Heard') ? '#1565c0' : '#155724'}}>
+              ℹ️ {authStatus}
             </div>
           )}
 
           <div className="input-group">
-            <label htmlFor="username">Username</label>
+            <label htmlFor="username">👤 Username</label>
             <div className="input-with-voice">
               <input
                 type="text"
@@ -241,7 +253,7 @@ const LoginPage = ({ login }) => {
                 className={`voice-btn ${isListening ? 'listening' : ''}`}
                 onClick={() => {
                   startVoiceRecognition();
-                  speakInstruction("Please say your username");
+                  speakInstruction(getReply("Please say your username","దయచేసి మీ ఉపయోగనామం చెప్పండి"));
                 }}
                 title="Use voice input for username"
                 aria-label="Voice input for username"
@@ -252,7 +264,7 @@ const LoginPage = ({ login }) => {
           </div>
 
           <div className="input-group">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">🔐 Password</label>
             <div className="input-with-voice">
               <input
                 type={showPassword ? "text" : "password"}
@@ -277,7 +289,7 @@ const LoginPage = ({ login }) => {
                 className={`voice-btn ${isListening ? 'listening' : ''}`}
                 onClick={() => {
                   startVoiceRecognition();
-                  speakInstruction("Please say your password");
+                  speakInstruction(getReply("Please say your password","దయచేసి మీ పాస్‌వర్డ్ చెప్పండి"));
                 }}
                 title="Use voice input for password"
                 aria-label="Voice input for password"
@@ -297,16 +309,28 @@ const LoginPage = ({ login }) => {
           </div>
 
           <button type="submit" className="auth-btn" disabled={authStatus.includes('Authenticating')}>
-            {authStatus.includes('Authenticating') ? 'Signing In...' : 'Sign In'}
+            {authStatus.includes('Authenticating') ? '🔄 Signing In...' : '✓ Sign In'}
           </button>
         </form>
 
         <div className="voice-instructions">
-          <h3>Voice Commands:</h3>
+          <h3>🎙️ Voice Commands</h3>
           <ul>
             <li>Say: "My username is john_doe and password is secret123"</li>
             <li>Say: "Login with username john_doe and password secret123"</li>
           </ul>
+          <div style={{marginTop:'12px', paddingTop: '12px', borderTop: '1px solid rgba(102,126,234,0.2)'}}>
+            <label htmlFor="voiceLang" style={{marginRight:'8px',fontSize:'0.85rem', fontWeight: '600', color: '#555'}}>Language:</label>
+            <select
+              id="voiceLang"
+              value={voiceLang}
+              onChange={e => setVoiceLang(e.target.value)}
+              style={{padding:'8px 12px',borderRadius:'6px', border: '1px solid #ddd', fontSize: '0.85rem', cursor: 'pointer', fontWeight: '500'}}
+            >
+              <option value="en-US">🇺🇸 English</option>
+              <option value="te-IN">🇮🇳 తెలుగు (Telugu)</option>
+            </select>
+          </div>
         </div>
 
         <div className="auth-footer">

@@ -129,13 +129,21 @@ online_banking/
 ## 🔧 Development Guide
 
 ### Backend Architecture (`app.py`)
-- **Flask Routes**: `/` (main page), `/process_speech` (API endpoint)
+- **Flask Routes**: `/` (main page), `/process_speech` (API endpoint). The `/process_speech` endpoint now accepts a `language` field (e.g. `'te'` or `'te-IN'` for Telugu) and performs simple Telugu-to-English normalization so that commands spoken in Telugu are understood. It also returns responses already localized into Telugu when the language flag indicates Telugu.
 - **Intent Recognition**: Keyword-based classification system
 - **Data Processing**: Functions for each banking operation
 - **Dummy Data**: Realistic banking information for testing
 
 ### Frontend Components (`index.html`)
 - **Speech Recognition**: Web Speech API integration
+
+**Installing a Telugu TTS voice:**
+1. **Windows:** Settings → Time & Language → Speech → Manage voices → Add voices → select "Telugu (India)".
+2. **macOS:** System Settings → Accessibility → Spoken Content → System Voice → Customise… → tick a Telugu voice such as Lekha or Rishi, then download.
+3. **Linux:** install a Telugu pack for your TTS engine (e.g. `sudo apt install espeak-ng-data` and verify with `espeak-ng --voices | grep te`).
+
+Reload the page and check `speechSynthesis.getVoices()` in the dev console to confirm the voice appears.
+- **Text-to-Speech Improvements**: `utterance.lang` is now set and voices selected by language so Telugu responses use an appropriate voice when available.  If your browser has no Telugu voices installed, the assistant will fall back to the default voice and will sound English — you can add a voice via your OS settings (see below).
 - **Voice Interface**: Large accessible microphone button
 - **Visual Feedback**: Status indicators and animations
 - **Error Handling**: User-friendly error messages

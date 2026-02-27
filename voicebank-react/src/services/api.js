@@ -81,13 +81,13 @@ export const authService = {
 // Banking services
 export const bankingService = {
   // Process speech commands (existing voiceBank functionality)
-  processSpeech: async (speechText) => {
+  processSpeech: async (speechText, language = 'en') => {
     return fetch('http://localhost:5000/process_speech', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ text: speechText }),
+      body: JSON.stringify({ text: speechText, language }),
     }).then(response => response.json());
   }
 };
@@ -95,7 +95,13 @@ export const bankingService = {
 // Page-specific services (example APIs for different pages)
 export const pageService = {
   getDashboardData: () => apiRequest('/dashboard', { method: 'GET' }),
-  getAccountInfo: () => apiRequest('/account', { method: 'GET' }),
+  getAccountInfo: (pin) => {
+    // pin is required to retrieve account overview
+    return apiRequest('/account', {
+      method: 'POST',
+      body: JSON.stringify({ pin }),
+    });
+  },
   getTransactions: () => apiRequest('/transactions', { method: 'GET' }),
   getLoans: () => apiRequest('/loans', { method: 'GET' })
 };

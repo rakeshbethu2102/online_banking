@@ -8,12 +8,12 @@ The React authentication system has been successfully integrated with the Flask 
 ### Backend (Flask) Updates
 - Added CORS support for cross-origin requests
 - Created authentication API endpoints:
-  - `/api/register` - User registration
+  - `/api/register` - User registration (requires username, password, email, and 4‑digit PIN)
   - `/api/login` - User authentication
   - `/api/logout` - Session termination
   - `/api/protected/test` - Protected route testing
   - `/api/dashboard` - Dashboard data (auth required)
-  - `/api/account` - Account information (auth required)
+  - `/api/account` - Account information (auth required; POST with PIN)
   - `/api/transactions` - Transaction list (auth required)
   - `/api/loans` - Loan details (auth required)
 - Enhanced security with password hashing
@@ -56,7 +56,7 @@ export const authService = {
 
 // Banking services
 export const bankingService = {
-  processSpeech: async (speechText) => { /* POST /process_speech */ }
+  processSpeech: async (speechText, language) => { /* POST /process_speech with language parameter; backend now localizes replies into Telugu when language starts with 'te' */ }
 };
 ```
 

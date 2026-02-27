@@ -128,7 +128,7 @@ Adjust voice recognition settings in the VoiceAuth utility class:
 - Interim Results: Show partial recognition results
 
 ### Form Fields
-Customize registration fields in `RegisterPage.jsx` to match your requirements.
+Registration now includes a 4‑digit PIN (used later to unlock account overview). Customize the fields in `RegisterPage.jsx` to match your requirements.
 
 ## 🚀 Integration with voiceBank
 
@@ -148,6 +148,7 @@ The authentication system seamlessly integrates with the existing voiceBank Flas
 
 ### Manual Testing Checklist:
 - [ ] Login with valid credentials
+- [ ] After login, enter your 4‑digit PIN on the dashboard and confirm account overview loads
 - [ ] Login with invalid credentials
 - [ ] Registration with valid data
 - [ ] Registration with invalid data

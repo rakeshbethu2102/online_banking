@@ -64,78 +64,138 @@ banking_data = {
     }
 }
 
+def normalize_telugu(text: str) -> str:
+    """Very basic mapping of common Telugu terms to English keywords."""
+    mapping = {
+        'బ్యాలెన్స్': 'balance',
+        'డబ్బు': 'money',
+        'మొత్తం': 'amount',
+        'ఎంత': 'how much',
+        'పంపు': 'send',
+        'కбжьара': 'transfer',
+        'లోన్': 'loan',
+        'ఇతర': 'other',
+        'ఇతరర': 'other',
+        'చార్జ్': 'charge',
+        'హెల్ప్': 'help'
+    }
+    for tel, eng in mapping.items():
+        text = text.replace(tel, eng)
+    return text
+
+
 def recognize_intent(text):
-    """Identify user intent from speech text"""
+    """Identify user intent from speech text, supporting English and simple Telugu phrasing."""
     text = text.lower().strip()
-    
+
+    # if any Telugu script characters, try a simple normalization
+    if re.search(r'[\u0c00-\u0c7f]', text):
+        text = normalize_telugu(text)
+
     # Balance check intents
     if any(keyword in text for keyword in ['balance', 'money', 'amount', 'how much', 'remaining', 'account balance']):
         return "balance_check"
-    
+
     # Transfer/Fund transfer intents
     elif any(keyword in text for keyword in ['transfer', 'send', 'money transfer', 'send money', 'fund transfer', 'neft', 'rtgs', 'imps']):
         return "fund_transfer"
-    
+
     # Loan information intents
     elif any(keyword in text for keyword in ['loan', 'borrow', 'emi', 'personal loan', 'home loan', 'car loan']):
         return "loan_info"
-    
+
     # Transaction history intents
     elif any(keyword in text for keyword in ['transaction', 'history', 'recent', 'last', 'statement', 'passbook']):
         return "transaction_history"
-    
+
     # Help intents
     elif any(keyword in text for keyword in ['help', 'what can', 'how to', 'options', 'menu']):
         return "help"
-    
+
     else:
         return "unknown"
 
-def process_balance_check():
-    """Process account balance check request"""
+def process_balance_check(lang='en'):
+    """Process account balance check request, returning Telugu or English based on lang.
+    Responses are phrased conversationally to feel less robotic."""
     balance = banking_data["account_balance"]
     account_number = banking_data["account_number"]
     
-    response = f"Your account {account_number} has a balance of {balance} rupees."
-    return response
+    if lang.startswith('te'):
+        return f"నీవు చూసేందుకు అనుకున్నట్లే చెప్పాలంటే, నీ ఖాతాలో{account_number}లో {balance} రూపాయలే ఉన్నాయ్."
+    
+    return f"Looking at your account {account_number}, you’ve got about {balance} rupees available."
 
-def process_fund_transfer():
+def process_fund_transfer(lang='en'):
     """Process fund transfer information request"""
     available = banking_data["transfer_limits"]["available_today"]
     limit = banking_data["transfer_limits"]["daily_limit"]
     
-    response = f"Your daily transfer limit is {limit} rupees. You can transfer {available} rupees today. You can transfer money using NEFT, RTGS, or IMPS."
-    return response
+    if lang.startswith('te'):
+        return (
+            f"నాలుగు మాటలలో చెప్పాలంటే, రోజూ {limit} రూపాయల వరకు పంపొచ్చు. "
+            f"ఈ రోజు ఇంకా {available} రూపాయలు మీ దగ్గరే ఉన్నాయి. NEFT/RTGS/IMPS‌లో ఏదైనా ఉపయోగించొచ్చు."
+        )
+    
+    return f"You’re allowed to move up to {limit} rupees per day; you’ve still got {available} rupees left to send today via NEFT, RTGS or IMPS."
 
-def process_loan_info():
+def process_loan_info(lang='en'):
     """Process loan information request"""
     personal_loan = banking_data["loan_info"]["personal_loan"]
     home_loan = banking_data["loan_info"]["home_loan"]
     
-    response = f"You have an active personal loan of {personal_loan['amount']} rupees with monthly EMI of {personal_loan['emi']} rupees. "
-    response += f"You have {personal_loan['remaining_emis']} EMIs remaining. "
-    response += f"Your home loan of {home_loan['amount']} rupees has been closed."
+    if lang.startswith('te'):
+        resp = (
+            f"నువ్వు {personal_loan['amount']} రూపాయల వ్యక్తిగత రుణం తీసుకున్నావు, EMI {personal_loan['emi']} రూపాయలు. "
+            f"ఇంకా {personal_loan['remaining_emis']} EMIలు చెల్లించాల్సి ఉంది. "
+        )
+        if home_loan:
+            resp += f"హోమ్ లోన్ ప్రస్తుతం {home_loan['status']}లో ఉంది."
+        return resp
+    
+    response = (
+        f"You’ve got a personal loan of {personal_loan['amount']} rupees, paying {personal_loan['emi']} each month. "
+        f"There are {personal_loan['remaining_emis']} EMIs left. "
+    )
+    if home_loan:
+        response += f"By the way, your home loan status is {home_loan['status']}."
     return response
 
-def process_transaction_history():
+def process_transaction_history(lang='en'):
     """Process transaction history request"""
     transactions = banking_data["recent_transactions"][:3]  # Last 3 transactions
     
-    response = "Your recent transactions are: "
+    if lang.startswith('te'):
+        response = "మీ తాజా లావాదేవీలు ఇలాగే ఉన్నాయి: "
+        for i, transaction in enumerate(transactions, 1):
+            amount = transaction['amount']
+            description = transaction['description']
+            trans_type = transaction['type']
+            if trans_type == 'credit':
+                response += f"{i}. {description}: {amount} రూపాయలు జమ అయ్యింది. "
+            else:
+                response += f"{i}. {description}: {amount} రూపాయలు తీసుకున్నారు. "
+        return response
+    
+    response = "Here’s what you’ve done recently: "
     for i, transaction in enumerate(transactions, 1):
         amount = transaction['amount']
         description = transaction['description']
         trans_type = transaction['type']
         
         if trans_type == 'credit':
-            response += f"{i}. {description}: {amount} rupees credited. "
+            response += f"{i}. {description}: {amount} rupees came in. "
         else:
-            response += f"{i}. {description}: {amount} rupees debited. "
+            response += f"{i}. {description}: {amount} rupees went out. "
     
     return response
 
-def process_help():
+def process_help(lang='en'):
     """Process help request"""
+    if lang.startswith('te'):
+        return (
+            "నేను మీకు ఈ క్రింది విషయంలో సహాయం చేయగలను: ఖాతా బ్యాలెన్స్‌ను తనిఖీ చేయండి, బదిలీ సమాచారాన్ని తెలుసుకోండి, రుణ వివరాలు, లావాదేవీచరిత్ర. మీరు ఏమి చేయాలనుకుంటున్నారో చెప్పండి."
+        )
     response = "I can help you with the following: Check account balance, Transfer funds information, Loan details, Transaction history. Please tell me what you want to do."
     return response
 
@@ -151,32 +211,40 @@ def process_speech():
     try:
         data = request.json
         speech_text = data.get('text', '')
+        lang = data.get('language', 'en')
         
         if not speech_text:
             return jsonify({'error': 'No speech text provided'}), 400
         
-        # Recognize intent
+        # Recognize intent (may normalize Telugu internally)
         intent = recognize_intent(speech_text)
         
-        # Process based on intent
+        # Process based on intent, passing along language preference
         if intent == "balance_check":
-            response_text = process_balance_check()
+            response_text = process_balance_check(lang)
         elif intent == "fund_transfer":
-            response_text = process_fund_transfer()
+            response_text = process_fund_transfer(lang)
         elif intent == "loan_info":
-            response_text = process_loan_info()
+            response_text = process_loan_info(lang)
         elif intent == "transaction_history":
-            response_text = process_transaction_history()
+            response_text = process_transaction_history(lang)
         elif intent == "help":
-            response_text = process_help()
+            response_text = process_help(lang)
         else:
-            response_text = "I didn't understand that. You can ask about balance, fund transfer, loans, or transaction history."
+            # provide a simple fallback in Telugu if requested
+            if lang.startswith('te'):
+                response_text = (
+                    "నేను అర్థం చేసుకోలేకపోయాను. మీరు బ్యాలెన్స్, బదిలీ, రుణాలు, లేదా లావాదేవీ చరిత్ర గురించి అడగవచ్చు."
+                )
+            else:
+                response_text = "I didn't understand that. You can ask about balance, fund transfer, loans, or transaction history."
         
         return jsonify({
             'success': True,
             'intent': intent,
             'response': response_text,
-            'original_text': speech_text
+            'original_text': speech_text,
+            'language': lang
         })
     
     except Exception as e:
@@ -188,26 +256,35 @@ def register():
     try:
         data = request.json
         
-        required_fields = ['username', 'password', 'email', 'firstName', 'lastName', 'phone']
+        # require a 4-digit PIN in addition to normal fields
+        required_fields = ['username', 'password', 'pin', 'email', 'firstName', 'lastName', 'phone']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'success': False, 'message': f'{field} is required'}), 400
         
         username = data['username']
         password = data['password']
+        pin = data['pin']
         email = data['email']
+        
+        # make sure pin is exactly 4 digits
+        if not pin.isdigit() or len(pin) != 4:
+            return jsonify({'success': False, 'message': 'PIN must be a 4 digit number'}), 400
         
         # Check if user already exists
         if username in users_db:
             return jsonify({'success': False, 'message': 'Username already exists'}), 400
         
-        # Hash the password
+        # Hash the password and pin
         hashed_pwd, salt = hash_password(password)
+        hashed_pin, pin_salt = hash_password(pin)
         
         # Store user in database
         users_db[username] = {
             'password_hash': hashed_pwd,
             'salt': salt,
+            'pin_hash': hashed_pin,
+            'pin_salt': pin_salt,
             'email': email,
             'firstName': data.get('firstName', ''),
             'lastName': data.get('lastName', ''),
@@ -305,14 +382,32 @@ def dashboard():
     # return some dashboard data; here just echoing existing banking_data
     return jsonify({'success': True, 'data': banking_data})
 
-@app.route('/api/account', methods=['GET'])
+@app.route('/api/account', methods=['POST'])
 def account_info():
     user = authenticate_request()
     if not user:
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+
+    data = request.json or {}
+    pin = data.get('pin')
+    if not pin:
+        return jsonify({'success': False, 'message': 'PIN required to access account overview'}), 400
+
+    # verify user exists and has a pin
+    record = users_db.get(user)
+    if not record or 'pin_hash' not in record:
+        return jsonify({'success': False, 'message': 'PIN not set for this user'}), 400
+
+    # check pin match
+    pin_salt = record['pin_salt']
+    pin_hash = hashlib.pbkdf2_hmac('sha256', pin.encode('utf-8'), pin_salt.encode('ascii'), 100000)
+    if pin_hash.hex() != record['pin_hash']:
+        return jsonify({'success': False, 'message': 'Invalid PIN'}), 401
+
     info = {
         'balance': banking_data['account_balance'],
-        'number': banking_data['account_number']
+        'number': banking_data['account_number'],
+        'available_today': banking_data.get('available_today', 0)
     }
     return jsonify({'success': True, 'account': info})
 

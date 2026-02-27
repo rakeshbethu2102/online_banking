@@ -92,25 +92,63 @@ class VoiceAuth {
 
   // Text to speech functionality
   speak(text, options = {}) {
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = options.rate || 1.0;
-      utterance.pitch = options.pitch || 1.0;
-      utterance.volume = options.volume || 1.0;
-      
-      // Try to use a specific voice if available
-      if (options.voice) {
-        const availableVoices = speechSynthesis.getVoices();
-        const selectedVoice = availableVoices.find(v => 
-          v.name.includes(options.voice) || v.lang.includes(options.lang || 'en')
-        );
-        if (selectedVoice) {
-          utterance.voice = selectedVoice;
-        }
-      }
-      
-      speechSynthesis.speak(utterance);
+    if (!('speechSynthesis' in window)) return;
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = options.rate || 1.0;
+    utterance.pitch = options.pitch || 1.0;
+    utterance.volume = options.volume || 1.0;
+
+    // inform engine of language so pronunciation improves
+    utterance.lang = options.lang || 'en-US';
+
+    // ensure voices list is populated (voiceschanged may not fire on first load)
+    let voices = speechSynthesis.getVoices();
+    if (!voices.length) {
+      // try forcing a load
+      speechSynthesis.onvoiceschanged = () => {
+        voices = speechSynthesis.getVoices();
+      };
     }
+
+    // helper to find a Telugu-specific voice by language or common names
+    const findTeluguVoice = () => {
+      // language code based match
+      let v = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('te'));
+      if (v) return v;
+      // name-based fallback
+      const keywords = ['telugu', 'lekha', 'rishi'];
+      return voices.find(v => {
+        const name = v.name.toLowerCase();
+        return keywords.some(k => name.includes(k));
+      });
+    };
+
+    let selectedVoice = null;
+
+    if (options.voice) {
+      selectedVoice = voices.find(v =>
+        v.name.includes(options.voice) || v.lang.includes(options.voice)
+      );
+    }
+    if (!selectedVoice && options.lang) {
+      // direct match by language prefix
+      selectedVoice = voices.find(v => v.lang && v.lang.startsWith(options.lang));
+    }
+
+    // if requesting Telugu and nothing matched yet, try extra heuristics
+    if (!selectedVoice && utterance.lang.startsWith('te')) {
+      selectedVoice = findTeluguVoice();
+      if (!selectedVoice) {
+        console.warn('No Telugu TTS voice found; speaking with default voice');
+      }
+    }
+
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+    }
+
+    speechSynthesis.speak(utterance);
   }
 
   // Parse authentication-related voice commands
@@ -121,7 +159,8 @@ class VoiceAuth {
       login: /(?:login|sign in|log in|enter|authenticate)/i,
       register: /(?:register|sign up|create account|new user)/i,
       username: /(?:username|name is|user is|my name|call me)\s+(.+)/i,
-      password: /(?:password|pass is|secret is|pin is)\s+(.+)/i,
+      password: /(?:password|pass is|secret is)\s+(.+)/i,
+      pin: /(?:pin|pincode|four digit pin)\s+(\d{4})/i,
       email: /(?:email|mail is|at)\s+([^,]+)/i,
       phone: /(?:phone|mobile|number|call me at)\s+(\d+)/i,
       firstName: /(?:first name|given name)\s+(.+)/i,
@@ -138,9 +177,13 @@ class VoiceAuth {
     const usernameMatch = lowerCmd.match(authPatterns.username);
     if (usernameMatch) parsedData.username = usernameMatch[1].trim();
 
-    // Extract password
+    // Extract password (do not confuse with pin)
     const passwordMatch = lowerCmd.match(authPatterns.password);
     if (passwordMatch) parsedData.password = passwordMatch[1].trim();
+
+    // Extract PIN if present
+    const pinMatch = lowerCmd.match(authPatterns.pin);
+    if (pinMatch) parsedData.pin = pinMatch[1].trim();
 
     // Extract email
     const emailMatch = lowerCmd.match(authPatterns.email);

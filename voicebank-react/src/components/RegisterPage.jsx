@@ -15,6 +15,7 @@ const RegisterPage = () => {
     username: '',
     password: '',
     confirmPassword: '',
+    pin: '',
     aadhaar: '',
     dob: ''
   });
@@ -25,6 +26,7 @@ const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [authStatus, setAuthStatus] = useState(''); // For voice authentication status
+  const [voiceLang, setVoiceLang] = useState('en-US'); // language for voice recognition
   
   const voiceAuthRef = useRef(null);
 
@@ -82,13 +84,19 @@ const RegisterPage = () => {
           password: parsedData.password
         }));
       }
+      if (parsedData.pin) {
+        setFormData(prev => ({
+          ...prev,
+          pin: parsedData.pin
+        }));
+      }
     });
     
     voiceAuthRef.current.setOnError((event) => {
       setIsListening(false);
       setAuthStatus('');
       setError(`Voice recognition error: ${event.error}`);
-      voiceAuthRef.current.speak(`Sorry, I couldn't understand that. ${event.error}`);
+      speak(`Sorry, I couldn't understand that. ${event.error}`, `క్షమించండి, నేను అర్థం చేసుకోలేదు. ${event.error}`);
     });
     
     voiceAuthRef.current.setOnStart(() => {
@@ -120,9 +128,14 @@ const RegisterPage = () => {
   }, []);
 
   const handleChange = (e) => {
+    let value = e.target.value;
+    if (e.target.name === 'pin') {
+      // only digits up to 4
+      value = value.replace(/\D/g, '').slice(0, 4);
+    }
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: value
     });
     setError('');
   };
@@ -132,21 +145,27 @@ const RegisterPage = () => {
     
     // Validation
     if (!formData.firstName || !formData.lastName || !formData.email || 
-        !formData.phone || !formData.username || !formData.password) {
+        !formData.phone || !formData.username || !formData.password || !formData.pin) {
       setError('Please fill in all required fields');
-      voiceAuthRef.current.speak('Please fill in all required fields');
+      speak('Please fill in all required fields', 'దయచేసి అవసరమైన అన్ని ఫీల్డ్లను పూరించండి');
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
-      voiceAuthRef.current.speak('Passwords do not match');
+      speak('Passwords do not match', 'పాస్‌వర్డ్లు సరిపోలలేకపోతున్నాయి');
       return;
     }
 
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters');
-      voiceAuthRef.current.speak('Password must be at least 6 characters');
+      speak('Password must be at least 6 characters', 'పాస్‌వర్డ్ కనీసం 6 అక్షరాల ఉండాలి');
+      return;
+    }
+
+    if (!/^[0-9]{4}$/.test(formData.pin)) {
+      setError('PIN must be exactly 4 digits');
+      speak('PIN must be exactly four digits', 'పిన్ తప్పక నలుగురు అంకెలుగా ఉండాలి');
       return;
     }
     
@@ -162,13 +181,14 @@ const RegisterPage = () => {
         phone: formData.phone,
         username: formData.username,
         password: formData.password,
+        pin: formData.pin,
       };
       
       const response = await authService.register(userData);
       
       if (response.success) {
         setSuccess('Registration successful! You can now log in.');
-        voiceAuthRef.current.speak('Registration successful! You can now log in.');
+        speak('Registration successful! You can now log in.', 'నమోదు విజయవంతంగా జరిగింది! మీరు ఇప్పుడు లాగిన్ చేయవచ్చు.');
         setAuthStatus('');
         
         // After a short pause, navigate to the login page
@@ -186,17 +206,18 @@ const RegisterPage = () => {
             username: '',
             password: '',
             confirmPassword: '',
+            pin: '',
             aadhaar: '',
             dob: ''
           });
         }, 2000);
       } else {
         setError(response.message || 'Registration failed');
-        voiceAuthRef.current.speak(response.message || 'Registration failed');
+        speak(response.message || 'Registration failed', 'నమోదు విఫలమైంది');
       }
     } catch (err) {
       setError(err.message || 'An error occurred during registration');
-      voiceAuthRef.current.speak('Registration failed, please try again');
+      speak('Something went wrong with registration; let\'s give it another go.', 'నమోదు సమయంలో లోపం జరిగింది; దయచేసి మళ్లీ ప్రయత్నించండి.');
     } finally {
       setIsLoading(false);
     }
@@ -205,7 +226,7 @@ const RegisterPage = () => {
   const startVoiceRecognition = () => {
     if (!voiceAuthRef.current.isSupported) {
       setError('Voice recognition not supported in your browser');
-      voiceAuthRef.current.speak('Voice recognition is not supported in your browser');
+      speak('Voice recognition is not supported in your browser', 'మీ బ్రౌజర్‌లో వాయిస్ గుర్తింపు మద్దతు లేదు');
       return;
     }
     
@@ -213,12 +234,12 @@ const RegisterPage = () => {
       voiceAuthRef.current.initialize({
         continuous: false,
         interimResults: false,
-        language: 'en-US'
+        language: voiceLang // use selected language
       });
       voiceAuthRef.current.start();
     } catch (err) {
       setError(err.message);
-      voiceAuthRef.current.speak('Error initializing voice recognition');
+      speak('Error initializing voice recognition', 'వాయిస్ గుర్తింపును ప్రారంభిస్తుండగా పผิดశIFA');
     }
   };
   
@@ -229,10 +250,18 @@ const RegisterPage = () => {
     }
   }, [authStatus]);
 
-  const speakInstruction = (instruction) => {
+  // helper to localize frontend messages
+  const getReply = (en, te) => (voiceLang.startsWith('te') ? te : en);
+
+  const speak = (en, te = en) => {
     if (voiceAuthRef.current) {
-      voiceAuthRef.current.speak(instruction);
+      const msg = getReply(en, te);
+      voiceAuthRef.current.speak(msg, { lang: voiceLang });
     }
+  };
+
+  const speakInstruction = (instruction) => {
+    speak(instruction, instruction); // can pass Telugu variations when calling
   };
 
   return (
@@ -244,18 +273,26 @@ const RegisterPage = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
-          {error && <div className="error-message">{error}</div>}
-          {success && <div className="success-message">{success}</div>}
+          {error && (
+            <div className="alert alert-danger" role="alert" style={{marginBottom: '20px', borderRadius: '8px', padding: '14px', background: '#ffe8e8', border: '1px solid #ffcccc', color: '#d32f2f'}}>
+              <strong>⚠ Error:</strong> {error}
+            </div>
+          )}
+          {success && (
+            <div className="alert alert-success" role="alert" style={{marginBottom: '20px', borderRadius: '8px', padding: '14px', background: '#d4edda', border: '1px solid #c3e6cb', color: '#155724'}}>
+              <strong>✓ Success:</strong> {success}
+            </div>
+          )}
           
           {authStatus && !success && (
-            <div className={`status-message ${authStatus.includes('Error') || authStatus.includes('Invalid') ? 'error' : 'info'}`}>
-              {authStatus}
+            <div className={`alert ${authStatus.includes('Error') || authStatus.includes('Invalid') ? 'alert-danger' : 'alert-info'}`} role="alert" style={{marginBottom: '20px', borderRadius: '8px', padding: '14px', background: authStatus.includes('Error') ? '#ffe8e8' : '#e3f2fd', border: authStatus.includes('Error') ? '1px solid #ffcccc' : '1px solid #90caf9', color: authStatus.includes('Error') ? '#d32f2f' : '#1565c0'}}>
+              ℹ️ {authStatus}
             </div>
           )}
 
           <div className="form-row">
             <div className="input-group">
-              <label htmlFor="firstName">First Name *</label>
+              <label htmlFor="firstName">👤 First Name *</label>
               <div className="input-with-voice">
                 <input
                   type="text"
@@ -271,7 +308,7 @@ const RegisterPage = () => {
                   className={`voice-btn ${isListening ? 'listening' : ''}`}
                   onClick={() => {
                     startVoiceRecognition();
-                    speakInstruction("Please say your first name");
+                    speakInstruction(getReply("Please say your first name","దయచేసి మీ మొదటి పేరు చెప్పండి"));
                   }}
                   title="Use voice input for first name"
                   aria-label="Voice input for first name"
@@ -282,7 +319,7 @@ const RegisterPage = () => {
             </div>
 
             <div className="input-group">
-              <label htmlFor="lastName">Last Name *</label>
+              <label htmlFor="lastName">👤 Last Name *</label>
               <div className="input-with-voice">
                 <input
                   type="text"
@@ -298,7 +335,7 @@ const RegisterPage = () => {
                   className={`voice-btn ${isListening ? 'listening' : ''}`}
                   onClick={() => {
                     startVoiceRecognition();
-                    speakInstruction("Please say your last name");
+                    speakInstruction(getReply("Please say your last name","దయచేసి మీ ఇంటిమిదటి పేరు చెప్పండి"));
                   }}
                   title="Use voice input for last name"
                   aria-label="Voice input for last name"
@@ -311,7 +348,7 @@ const RegisterPage = () => {
 
           <div className="form-row">
             <div className="input-group">
-              <label htmlFor="email">Email *</label>
+              <label htmlFor="email">✉️ Email *</label>
               <div className="input-with-voice">
                 <input
                   type="email"
@@ -327,7 +364,7 @@ const RegisterPage = () => {
                   className={`voice-btn ${isListening ? 'listening' : ''}`}
                   onClick={() => {
                     startVoiceRecognition();
-                    speakInstruction("Please say your email address");
+                    speakInstruction(getReply("Please say your email address","దయచేసి మీ ఇమెయిల్ చిరునామా చెప్పండి"));
                   }}
                   title="Use voice input for email"
                   aria-label="Voice input for email"
@@ -338,7 +375,7 @@ const RegisterPage = () => {
             </div>
 
             <div className="input-group">
-              <label htmlFor="phone">Phone Number *</label>
+              <label htmlFor="phone">📱 Phone Number *</label>
               <div className="input-with-voice">
                 <input
                   type="tel"
@@ -354,7 +391,7 @@ const RegisterPage = () => {
                   className={`voice-btn ${isListening ? 'listening' : ''}`}
                   onClick={() => {
                     startVoiceRecognition();
-                    speakInstruction("Please say your phone number");
+                    speakInstruction(getReply("Please say your phone number","దయచేసి మీ ఫోన్ నంబర్ చెప్పండి"));
                   }}
                   title="Use voice input for phone number"
                   aria-label="Voice input for phone number"
@@ -366,7 +403,7 @@ const RegisterPage = () => {
           </div>
 
           <div className="input-group">
-            <label htmlFor="username">Username *</label>
+            <label htmlFor="username">🔐 Username *</label>
             <div className="input-with-voice">
               <input
                 type="text"
@@ -382,7 +419,7 @@ const RegisterPage = () => {
                 className={`voice-btn ${isListening ? 'listening' : ''}`}
                 onClick={() => {
                   startVoiceRecognition();
-                  speakInstruction("Please say your desired username");
+                  speakInstruction(getReply("Please say your desired username","దయచేసి మీ కోరుకున్న ఉపయోగనామం చెప్పండి"));
                 }}
                 title="Use voice input for username"
                 aria-label="Voice input for username"
@@ -392,9 +429,38 @@ const RegisterPage = () => {
             </div>
           </div>
 
+          <div className="input-group">
+            <label htmlFor="pin">🔢 4‑digit PIN *</label>
+            <div className="input-with-voice">
+              <input
+                type={showPassword ? "text" : "password"}
+                id="pin"
+                name="pin"
+                value={formData.pin}
+                onChange={handleChange}
+                placeholder="Enter PIN (e.g. 1234)"
+                maxLength={4}
+                aria-label="4 digit PIN"
+                pattern="\d*"
+              />
+              <button
+                type="button"
+                className={`voice-btn ${isListening ? 'listening' : ''}`}
+                onClick={() => {
+                  startVoiceRecognition();
+                  speakInstruction(getReply("Please say your four digit pin","దయచేసి మీ నాలుగు అంకెల పిన్ చెప్పండి"));
+                }}
+                title="Use voice input for PIN"
+                aria-label="Voice input for PIN"
+              >
+                {isListening ? '🔴' : '🎤'}
+              </button>
+            </div>
+          </div>
+
           <div className="form-row">
             <div className="input-group">
-              <label htmlFor="password">Password *</label>
+              <label htmlFor="password">🔑 Password *</label>
               <div className="input-with-voice">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -419,7 +485,7 @@ const RegisterPage = () => {
                   className={`voice-btn ${isListening ? 'listening' : ''}`}
                   onClick={() => {
                     startVoiceRecognition();
-                    speakInstruction("Please say your password");
+                    speakInstruction(getReply("Please say your password","దయచేసి మీ పాస్‌వర్డ్ చెప్పండి"));
                   }}
                   title="Use voice input for password"
                   aria-label="Voice input for password"
@@ -430,7 +496,7 @@ const RegisterPage = () => {
             </div>
 
             <div className="input-group">
-              <label htmlFor="confirmPassword">Confirm Password *</label>
+              <label htmlFor="confirmPassword">🔑 Confirm Password *</label>
               <div className="input-with-voice">
                 <input
                   type={showConfirmPassword ? "text" : "password"}
@@ -455,7 +521,7 @@ const RegisterPage = () => {
                   className={`voice-btn ${isListening ? 'listening' : ''}`}
                   onClick={() => {
                     startVoiceRecognition();
-                    speakInstruction("Please say your password again to confirm");
+                    speakInstruction(getReply("Please say your password again to confirm","దయచేసి మీ పాస్‌వర్డ్‌ను మరోసారి నిర్ధారించడానికి చెప్పండి"));
                   }}
                   title="Use voice input for confirm password"
                   aria-label="Voice input for confirm password"
@@ -468,7 +534,7 @@ const RegisterPage = () => {
 
           <div className="form-row">
             <div className="input-group">
-              <label htmlFor="aadhaar">Aadhaar Number</label>
+              <label htmlFor="aadhaar">🆔 Aadhaar Number</label>
               <div className="input-with-voice">
                 <input
                   type="text"
@@ -484,7 +550,7 @@ const RegisterPage = () => {
                   className={`voice-btn ${isListening ? 'listening' : ''}`}
                   onClick={() => {
                     startVoiceRecognition();
-                    speakInstruction("Please say your Aadhaar number");
+                    speakInstruction(getReply("Please say your Aadhaar number","దయచేసి మీ ఆధార్ నంబర్ చెప్పండి"));
                   }}
                   title="Use voice input for Aadhaar number"
                   aria-label="Voice input for Aadhaar number"
@@ -495,7 +561,7 @@ const RegisterPage = () => {
             </div>
 
             <div className="input-group">
-              <label htmlFor="dob">Date of Birth</label>
+              <label htmlFor="dob">📅 Date of Birth</label>
               <input
                 type="date"
                 id="dob"
@@ -515,17 +581,32 @@ const RegisterPage = () => {
             </label>
           </div>
 
+          <p style={{fontSize:'0.85rem',color:'#555',marginTop:'8px'}}>Your 4‑digit PIN will be required to unlock your account overview on the dashboard.</p>
+
           <button type="submit" className="auth-btn" disabled={authStatus.includes('Creating')}>
-            {authStatus.includes('Creating') ? 'Creating Account...' : 'Create Account'}
+            {authStatus.includes('Creating') ? '🔄 Creating Account...' : '✓ Create Account'}
           </button>
         </form>
 
         <div className="voice-instructions">
-          <h3>Voice Commands:</h3>
+          <h3>🎙️ Voice Commands</h3>
           <ul>
             <li>Say: "My name is John Doe, email is john@example.com, phone is 9876543210"</li>
             <li>Say: "Username is johndoe, password is secret123"</li>
+            <li>Say: "PIN is 1234" to set a four-digit PIN</li>
           </ul>
+          <div style={{marginTop:'12px', paddingTop: '12px', borderTop: '1px solid rgba(102,126,234,0.2)'}}>
+            <label htmlFor="voiceLang" style={{marginRight:'8px',fontSize:'0.85rem', fontWeight: '600', color: '#555'}}>Language:</label>
+            <select
+              id="voiceLang"
+              value={voiceLang}
+              onChange={e => setVoiceLang(e.target.value)}
+              style={{padding:'8px 12px',borderRadius:'6px', border: '1px solid #ddd', fontSize: '0.85rem', cursor: 'pointer', fontWeight: '500'}}
+            >
+              <option value="en-US">🇺🇸 English</option>
+              <option value="te-IN">🇮🇳 తెలుగు (Telugu)</option>
+            </select>
+          </div>
         </div>
 
         <div className="auth-footer">
